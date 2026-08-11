@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bus, Phone, MapPin, Users, CreditCard, Calendar, Check, Search } from "lucide-react";
 import { createReservation, fetchConfig } from "./firebase";
 
@@ -35,53 +35,29 @@ const BOUNDS = {
 };
 
 // Built-in city dataset (no live network search needed — the preview sandbox blocks external calls)
-const ROMANIA_CITIES = [
-  { name: "Satu Mare", lat: 47.7908, lon: 22.8857, fixedPickup: null, fixedTime: "15:00" },
-  { name: "Baia Mare", lat: 47.6567, lon: 23.5847, fixedPickup: "Stația Gară", fixedTime: "13:30" },
-  { name: "Oradea", lat: 47.0465, lon: 21.9189, fixedPickup: "Mall, Bulevardul Ștefan cel Mare", fixedTime: "18:00" },
-  { name: "Zalău", lat: 47.1911, lon: 23.0575, fixedPickup: "Gară", fixedTime: "13:00" },
-  { name: "Cluj-Napoca", lat: 46.7712, lon: 23.6236, fixedPickup: "Autogara Fany", fixedTime: null },
-  { name: "Carei", lat: 47.6836, lon: 22.4694, fixedPickup: "Piața Avram Iancu, fostul BRD", fixedTime: "16:00" },
-  { name: "Marghita", lat: 47.3494, lon: 22.3364, fixedPickup: null, fixedTime: "17:00" },
-  { name: "Valea lui Mihai", lat: 47.5167, lon: 22.1167, fixedPickup: null, fixedTime: "17:00" },
-  { name: "Negrești-Oaș", lat: 47.8697, lon: 23.4256, fixedPickup: null, fixedTime: null },
-  { name: "Sighetu Marmației", lat: 47.9257, lon: 23.8919, fixedPickup: null, fixedTime: null },
-  { name: "Beiuș", lat: 46.6689, lon: 22.3536, fixedPickup: null, fixedTime: null },
-  { name: "Dej", lat: 47.1428, lon: 23.8736, fixedPickup: null, fixedTime: null },
-  { name: "Turda", lat: 46.5667, lon: 23.7833, fixedPickup: null, fixedTime: null },
-  // Bihor — sate/localități pentru testare
-  { name: "Aleșd", lat: 47.0667, lon: 22.4, fixedPickup: null, fixedTime: null },
-  { name: "Ștei", lat: 46.5167, lon: 22.3833, fixedPickup: null, fixedTime: null },
-  { name: "Salonta", lat: 46.8, lon: 21.65, fixedPickup: null, fixedTime: null },
-  { name: "Săcueni", lat: 47.35, lon: 22.1167, fixedPickup: null, fixedTime: null },
-  { name: "Nucet", lat: 46.4667, lon: 22.6167, fixedPickup: null, fixedTime: null },
-  { name: "Vașcău", lat: 46.4667, lon: 22.4667, fixedPickup: null, fixedTime: null },
-  { name: "Tinca", lat: 46.7833, lon: 21.95, fixedPickup: null, fixedTime: null },
-  { name: "Diosig", lat: 47.2833, lon: 21.9333, fixedPickup: null, fixedTime: null },
-  { name: "Sânmartin (Bihor)", lat: 46.9833, lon: 21.95, fixedPickup: null, fixedTime: null },
-  { name: "Biharia", lat: 47.1167, lon: 21.8833, fixedPickup: null, fixedTime: null },
-  { name: "Borș", lat: 47.0667, lon: 21.7167, fixedPickup: null, fixedTime: null },
-  { name: "Șuncuiuș", lat: 46.9333, lon: 22.6, fixedPickup: null, fixedTime: null },
-  { name: "Vadu Crișului", lat: 46.9333, lon: 22.4833, fixedPickup: null, fixedTime: null },
-  { name: "Popești (Bihor)", lat: 47.2167, lon: 22.2, fixedPickup: null, fixedTime: null },
-  { name: "Curtuișeni", lat: 47.3667, lon: 22.0, fixedPickup: null, fixedTime: null },
-  { name: "Cefa", lat: 46.9333, lon: 21.7167, fixedPickup: null, fixedTime: null },
-  { name: "Sălard", lat: 47.2, lon: 21.9167, fixedPickup: null, fixedTime: null },
-  { name: "Girișu de Criș", lat: 47.0, lon: 21.7833, fixedPickup: null, fixedTime: null },
-  { name: "Oșorhei", lat: 47.0167, lon: 21.85, fixedPickup: null, fixedTime: null },
-  { name: "Chișlaz", lat: 47.15, lon: 22.15, fixedPickup: null, fixedTime: null },
-  // Sălaj — sate/localități pentru testare
-  { name: "Jibou", lat: 47.26, lon: 23.25, fixedPickup: null, fixedTime: null },
-  { name: "Șimleu Silvaniei", lat: 47.2333, lon: 22.8, fixedPickup: null, fixedTime: null },
-  { name: "Cehu Silvaniei", lat: 47.4, lon: 23.1667, fixedPickup: null, fixedTime: null },
-  { name: "Crasna", lat: 47.25, lon: 22.5833, fixedPickup: null, fixedTime: null },
-  { name: "Hida", lat: 47.05, lon: 23.1833, fixedPickup: null, fixedTime: null },
-  { name: "Românași", lat: 47.1167, lon: 23.2667, fixedPickup: null, fixedTime: null },
-  { name: "Zimbor", lat: 46.9833, lon: 23.2, fixedPickup: null, fixedTime: null },
-  { name: "Sânmihaiu Almașului", lat: 46.95, lon: 23.1167, fixedPickup: null, fixedTime: null },
-  { name: "Ileanda", lat: 47.3333, lon: 23.7, fixedPickup: null, fixedTime: null },
-  { name: "Năpradea", lat: 47.3333, lon: 23.2833, fixedPickup: null, fixedTime: null },
-];
+// Puncte fixe de plecare cunoscute — orașul e găsit prin căutare live,
+// dar dacă numele coincide cu unul din aceste orașe, folosim punctul fix.
+const ROMANIA_FIXED_INFO = {
+  "satu mare": { fixedPickup: null, fixedTime: "15:00" },
+  "baia mare": { fixedPickup: "Stația Gară", fixedTime: "13:30" },
+  "oradea": { fixedPickup: "Mall, Bulevardul Ștefan cel Mare", fixedTime: "18:00" },
+  "zalau": { fixedPickup: "Gară", fixedTime: "13:00" },
+  "cluj napoca": { fixedPickup: "Autogara Fany", fixedTime: null },
+  "carei": { fixedPickup: "Piața Avram Iancu, fostul BRD", fixedTime: "16:00" },
+  "marghita": { fixedPickup: null, fixedTime: "17:00" },
+  "valea lui mihai": { fixedPickup: null, fixedTime: "17:00" },
+};
+function normalizeRoName(s) {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/-/g, " ")
+    .trim();
+}
+function getFixedInfo(name) {
+  return ROMANIA_FIXED_INFO[normalizeRoName(name)] || null;
+}
 
 // Main pickup corridor used to estimate times for localities without a fixed time
 const ROUTE_STOPS = [
@@ -91,21 +67,21 @@ const ROUTE_STOPS = [
   { name: "Marghita/Valea lui Mihai", lat: 47.4331, lon: 22.2266, minutes: 17 * 60 },
   { name: "Oradea", lat: 47.0465, lon: 21.9189, minutes: 18 * 60 },
 ];
-const TIME_INTERP_ELIGIBLE = ["Negrești-Oaș", "Sighetu Marmației", "Beiuș"];
 
 function minutesToHHMM(m) {
   const h = Math.floor(m / 60) % 24;
   const mm = Math.round(m % 60);
   return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
-function estimateDepartureTime(city) {
-  if (city.fixedTime) return city.fixedTime;
-  if (!TIME_INTERP_ELIGIBLE.includes(city.name)) return null;
+function estimateDepartureTime(selected) {
+  const fixed = getFixedInfo(selected.name);
+  if (fixed && fixed.fixedTime) return fixed.fixedTime;
+  if (fixed) return null; // fixed stop but no time set (ex: Cluj-Napoca) — se comunică telefonic
   let best = null;
   for (let i = 0; i < ROUTE_STOPS.length - 1; i++) {
     const a = ROUTE_STOPS[i], b = ROUTE_STOPS[i + 1];
-    const da = haversine(city.lat, city.lon, a.lat, a.lon);
-    const db = haversine(city.lat, city.lon, b.lat, b.lon);
+    const da = haversine(selected.lat, selected.lon, a.lat, a.lon);
+    const db = haversine(selected.lat, selected.lon, b.lat, b.lon);
     const score = da + db;
     if (!best || score < best.score) {
       const t = da + db === 0 ? 0 : da / (da + db);
@@ -115,64 +91,9 @@ function estimateDepartureTime(city) {
   return best ? minutesToHHMM(best.minutes) : null;
 }
 
-const DESTINATION_CITIES = [
-  { country: "Germania", name: "Nürnberg", postcode: "90402", lat: 49.4521, lon: 11.0767 },
-  { country: "Germania", name: "Illertissen", postcode: "89257", lat: 48.2298, lon: 10.1002 },
-  { country: "Germania", name: "Ulm", postcode: "89073", lat: 48.4011, lon: 9.9876 },
-  { country: "Germania", name: "Stuttgart", postcode: "70173", lat: 48.7758, lon: 9.1829 },
-  { country: "Germania", name: "Karlsruhe", postcode: "76131", lat: 49.0069, lon: 8.4037 },
-  { country: "Germania", name: "Freiburg im Breisgau", postcode: "79098", lat: 47.999, lon: 7.8421 },
-  { country: "Germania", name: "Frankfurt am Main", postcode: "60306", lat: 50.1109, lon: 8.6821 },
-  { country: "Germania", name: "Köln", postcode: "50667", lat: 50.9375, lon: 6.9603 },
-  { country: "Germania", name: "Dortmund", postcode: "44135", lat: 51.5136, lon: 7.4653 },
-  { country: "Germania", name: "Bochum", postcode: "44787", lat: 51.4818, lon: 7.2162 },
-  { country: "Germania", name: "Kassel", postcode: "34117", lat: 51.3127, lon: 9.4797 },
-  { country: "Germania", name: "Würzburg", postcode: "97070", lat: 49.7913, lon: 9.9534 },
-  { country: "Germania", name: "Hannover", postcode: "30159", lat: 52.3759, lon: 9.732 },
-  { country: "Germania", name: "Bremen", postcode: "28195", lat: 53.0793, lon: 8.8017 },
-  { country: "Germania", name: "Bremerhaven", postcode: "27568", lat: 53.5396, lon: 8.5809 },
-  { country: "Germania", name: "Hamburg", postcode: "20095", lat: 53.5511, lon: 9.9937 },
-  { country: "Germania", name: "Berlin", postcode: "10115", lat: 52.52, lon: 13.405 },
-  { country: "Germania", name: "Magdeburg", postcode: "39104", lat: 52.1205, lon: 11.6276 },
-  { country: "Germania", name: "Bayreuth", postcode: "95444", lat: 49.9456, lon: 11.5713 },
-  { country: "Germania", name: "Marktredwitz", postcode: "95615", lat: 50.0, lon: 12.0866 },
-  { country: "Germania", name: "Dresden", postcode: "01067", lat: 51.0504, lon: 13.7373 },
-  { country: "Germania", name: "Cottbus", postcode: "03046", lat: 51.7563, lon: 14.3329 },
-  { country: "Germania", name: "Passau", postcode: "94032", lat: 48.5665, lon: 13.4312 },
-  { country: "Germania", name: "München", postcode: "80331", lat: 48.1351, lon: 11.582 },
-  { country: "Germania", name: "Rostock", postcode: "18055", lat: 54.0887, lon: 12.1414 },
-  { country: "Germania", name: "Plauen", postcode: "08523", lat: 50.4947, lon: 12.1382 },
 
-  { country: "Austria", name: "Wien", postcode: "1010", lat: 48.2082, lon: 16.3738 },
-  { country: "Austria", name: "Linz", postcode: "4020", lat: 48.3069, lon: 14.2858 },
-  { country: "Austria", name: "Salzburg", postcode: "5020", lat: 47.8095, lon: 13.055 },
-  { country: "Austria", name: "Graz", postcode: "8010", lat: 47.0707, lon: 15.4395 },
-  { country: "Austria", name: "Villach", postcode: "9500", lat: 46.6111, lon: 13.8558 },
-  { country: "Austria", name: "Innsbruck", postcode: "6020", lat: 47.2692, lon: 11.4041 },
-  { country: "Austria", name: "Bregenz", postcode: "6900", lat: 47.5031, lon: 9.7471 },
-
-  { country: "Elveția", name: "Zürich", postcode: "8001", lat: 47.3769, lon: 8.5417 },
-  { country: "Elveția", name: "Basel", postcode: "4001", lat: 47.5596, lon: 7.5886 },
-  { country: "Elveția", name: "Bern", postcode: "3011", lat: 46.948, lon: 7.4474 },
-  { country: "Elveția", name: "Genève", postcode: "1201", lat: 46.2044, lon: 6.1432 },
-
-  { country: "Olanda", name: "Amsterdam", postcode: "1012", lat: 52.3676, lon: 4.9041 },
-  { country: "Olanda", name: "Rotterdam", postcode: "3011", lat: 51.9244, lon: 4.4777 },
-  { country: "Olanda", name: "Venlo", postcode: "5911", lat: 51.3704, lon: 6.1724 },
-  { country: "Olanda", name: "Etten-Leur", postcode: "4870", lat: 51.5719, lon: 4.6353 },
-  { country: "Olanda", name: "Groningen", postcode: "9711", lat: 53.2194, lon: 6.5665 },
-
-  { country: "Belgia", name: "Bruxelles", postcode: "1000", lat: 50.8503, lon: 4.3517 },
-  { country: "Belgia", name: "Gent", postcode: "9000", lat: 51.0543, lon: 3.7174 },
-  { country: "Belgia", name: "Charleroi", postcode: "6000", lat: 50.4108, lon: 4.4446 },
-  { country: "Belgia", name: "Antwerpen", postcode: "2000", lat: 51.2194, lon: 4.4025 },
-  { country: "Belgia", name: "Bouillon", postcode: "6830", lat: 49.7942, lon: 5.0678 },
-
-  { country: "Cehia", name: "Praha", postcode: "11000", lat: 50.0755, lon: 14.4378 },
-  { country: "Cehia", name: "Plzeň", postcode: "30100", lat: 49.7384, lon: 13.3736 },
-
-  { country: "Luxemburg", name: "Luxembourg", postcode: "1009", lat: 49.6117, lon: 6.1319 },
-];
+const COUNTRY_CODE_TO_NAME = { de: "Germania", at: "Austria", nl: "Olanda", be: "Belgia", ch: "Elveția", cz: "Cehia", lu: "Luxemburg" };
+const DEST_COUNTRY_CODES = Object.keys(COUNTRY_CODE_TO_NAME).join(",");
 
 const DEFAULT_ZONES = [
   { id: "z1", country: "Germania", label: "A8 / A7 / A3 (Ulm–Nürnberg)", lat: 48.9, lon: 10.3, radiusKm: 90, price: 130 },
@@ -360,7 +281,9 @@ function OutboundForm({ zones, fallback, onSubmit }) {
 
   const departure = departureCity ? { ...departureCity, country: "România" } : null;
   const priceInfo = computePrice(zones, fallback, departure, destination);
-  const needsAddress = departureCity && !departureCity.fixedPickup;
+  const fixedInfo = departureCity ? getFixedInfo(departureCity.name) : null;
+  const fixedPickup = fixedInfo ? fixedInfo.fixedPickup : null;
+  const needsAddress = departureCity && !fixedPickup;
   const departureTime = departureCity ? estimateDepartureTime(departureCity) : null;
   const passengersFilled = passengers.every((p) => p.prenume.trim() && p.nume.trim());
   const canSubmit = name.trim() && phone.trim() && date && payment && departureCity && (!needsAddress || streetAddress.trim()) && destination && seats >= 1 && passengersFilled;
@@ -368,11 +291,11 @@ function OutboundForm({ zones, fallback, onSubmit }) {
   async function handleSubmit() {
     if (!canSubmit) return;
     setSubmitting(true);
-    const pickupPoint = departureCity.fixedPickup || streetAddress;
+    const pickupPoint = fixedPickup || streetAddress;
     const record = {
       id: newId(), name, phone, date, seats: Number(seats), payment, direction: "dus",
       departureLabel: `${pickupPoint}, ${departureCity.name}`,
-      destinationLabel: `${destination.postcode} ${destination.name}, ${destination.country}`,
+      destinationLabel: destination.label,
       departureTime, passengers, notes: notes.trim(),
       basePrice: priceInfo.base, surcharge: priceInfo.surcharge, total: priceInfo.total,
       status: "nou", createdAt: new Date().toISOString(),
@@ -385,14 +308,14 @@ function OutboundForm({ zones, fallback, onSubmit }) {
     <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 18 }} className="p-6">
       <div className="flex flex-col gap-4">
         <Field label="Localitatea de plecare" icon={<MapPin size={14} color={C.inkLight} />}>
-          <LocalSearch list={ROMANIA_CITIES} getLabel={(c) => c.name} placeholder="ex: Satu Mare" value={departureCity} onSelect={setDepartureCity} />
+          <LiveSearch countrycodes="ro" forRomania placeholder="ex: Satu Mare" value={departureCity} onSelect={setDepartureCity} />
         </Field>
 
         {departureCity && (
-          departureCity.fixedPickup ? (
+          fixedPickup ? (
             <div style={{ background: C.bg, borderRadius: 10 }} className="px-3 py-2 text-xs">
               <span style={{ color: C.inkLight }}>Punct de plecare fix: </span>
-              <span style={{ color: C.ink, fontWeight: 600 }}>{departureCity.fixedPickup}</span>
+              <span style={{ color: C.ink, fontWeight: 600 }}>{fixedPickup}</span>
             </div>
           ) : (
             <Field label="Stradă și număr (adresă exactă de preluare)" icon={<MapPin size={14} color={C.inkLight} />}>
@@ -410,7 +333,7 @@ function OutboundForm({ zones, fallback, onSubmit }) {
         )}
 
         <Field label="Destinație (oraș)" icon={<MapPin size={14} color={C.amberDark} />}>
-          <LocalSearch list={DESTINATION_CITIES} getLabel={(c) => `${c.name} — ${c.country}`} placeholder="ex: Nurnberg" value={destination} onSelect={setDestination} />
+          <LiveSearch countrycodes={DEST_COUNTRY_CODES} placeholder="ex: Nurnberg" value={destination} onSelect={setDestination} />
         </Field>
 
         <Field label="Nume complet" icon={<Users size={14} color={C.inkLight} />}>
@@ -512,7 +435,7 @@ function ReturnForm({ zones, fallback, onSubmit }) {
     <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 18 }} className="p-6">
       <div className="flex flex-col gap-4">
         <Field label="Orașul de unde vă luăm (străinătate)" icon={<MapPin size={14} color={C.amberDark} />}>
-          <LocalSearch list={DESTINATION_CITIES} getLabel={(c) => `${c.name} — ${c.country}`} placeholder="ex: Nurnberg" value={pickupCity} onSelect={setPickupCity} />
+          <LiveSearch countrycodes={DEST_COUNTRY_CODES} placeholder="ex: Nurnberg" value={pickupCity} onSelect={setPickupCity} />
         </Field>
 
         <Field label="Stradă și număr (adresă exactă de preluare)" icon={<MapPin size={14} color={C.inkLight} />}>
@@ -521,7 +444,7 @@ function ReturnForm({ zones, fallback, onSubmit }) {
         </Field>
 
         <Field label="Localitatea de destinație (România)" icon={<MapPin size={14} color={C.inkLight} />}>
-          <LocalSearch list={ROMANIA_CITIES} getLabel={(c) => c.name} placeholder="ex: Satu Mare" value={destinationCity} onSelect={setDestinationCity} />
+          <LiveSearch countrycodes="ro" forRomania placeholder="ex: Satu Mare" value={destinationCity} onSelect={setDestinationCity} />
         </Field>
 
         <div style={{ background: "#FFF7F2", borderRadius: 10, border: `1px solid ${C.border}` }} className="px-3 py-2 text-xs">
@@ -644,22 +567,49 @@ function PassengerList({ passengers, setPassengers }) {
 }
 
 // ---------- Local (offline) search over a built-in list ----------
-function LocalSearch({ list, getLabel, placeholder, value, onSelect }) {
-  const [query, setQuery] = useState(value ? getLabel(value) : "");
-  const [open, setOpen] = useState(false);
+// ---------- Căutare live (Nominatim / OpenStreetMap) ----------
+async function nominatimSearch(query, countrycodes) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&accept-language=ro&limit=7&countrycodes=${countrycodes}&q=${encodeURIComponent(query)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("search failed");
+  return res.json();
+}
 
-  const results = query.trim().length > 0
-    ? list.filter((c) => getLabel(c).toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
-    : list.slice(0, 8);
+function LiveSearch({ countrycodes, placeholder, value, onSelect, forRomania }) {
+  const [query, setQuery] = useState(value ? value.label : "");
+  const [results, setResults] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const timer = useRef(null);
 
   function handleChange(v) {
     setQuery(v);
     onSelect(null);
-    setOpen(true);
+    if (timer.current) clearTimeout(timer.current);
+    if (v.trim().length < 3) { setResults([]); setOpen(false); return; }
+    setLoading(true);
+    timer.current = setTimeout(async () => {
+      try {
+        const data = await nominatimSearch(v, countrycodes);
+        setResults(data);
+        setOpen(true);
+      } catch (e) { console.error(e); setResults([]); }
+      setLoading(false);
+    }, 450);
   }
-  function pick(item) {
+
+  function pick(r) {
+    const addr = r.address || {};
+    const cityName = addr.city || addr.town || addr.village || addr.municipality || addr.county || r.display_name.split(",")[0];
+    const postcode = addr.postcode || "";
+    const countryCode = (addr.country_code || "").toLowerCase();
+    const country = forRomania ? "România" : (COUNTRY_CODE_TO_NAME[countryCode] || addr.country || "");
+    const label = forRomania
+      ? cityName
+      : (postcode ? `${postcode} ${cityName}, ${country}` : `${cityName}, ${country}`);
+    const item = { name: cityName, label, lat: parseFloat(r.lat), lon: parseFloat(r.lon), country, postcode };
     onSelect(item);
-    setQuery(getLabel(item));
+    setQuery(label);
     setOpen(false);
   }
 
@@ -667,19 +617,20 @@ function LocalSearch({ list, getLabel, placeholder, value, onSelect }) {
     <div className="relative">
       <div className="relative">
         <Search size={14} color={C.inkLight} className="absolute left-3 top-1/2 -translate-y-1/2" />
-        <input value={query} onChange={(e) => handleChange(e.target.value)} onFocus={() => setOpen(true)}
+        <input value={query} onChange={(e) => handleChange(e.target.value)} onFocus={() => results.length > 0 && setOpen(true)}
           placeholder={placeholder} style={{ ...inputStyle, paddingLeft: 30 }} className="w-full outline-none text-sm" />
       </div>
       {open && (
-        <div style={{ background: "white", border: `1px solid ${C.border}`, borderRadius: 10 }} className="absolute z-10 w-full mt-1 max-h-48 overflow-y-auto shadow-md">
+        <div style={{ background: "white", border: `1px solid ${C.border}`, borderRadius: 10 }} className="absolute z-10 w-full mt-1 max-h-52 overflow-y-auto shadow-md">
           {results.length === 0 && <p style={{ color: C.inkLight }} className="px-3 py-2 text-xs">Niciun rezultat.</p>}
-          {results.map((item, i) => (
-            <button key={i} onClick={() => pick(item)} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 border-b last:border-b-0" style={{ borderColor: C.border, color: C.ink }}>
-              {getLabel(item)}{item.postcode ? ` · ${item.postcode}` : ""}
+          {results.map((r) => (
+            <button key={r.place_id} onClick={() => pick(r)} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 border-b last:border-b-0" style={{ borderColor: C.border, color: C.ink }}>
+              {r.display_name}
             </button>
           ))}
         </div>
       )}
+      {loading && <p style={{ color: C.inkLight, fontSize: 11 }} className="mt-1">Se caută…</p>}
     </div>
   );
 }
